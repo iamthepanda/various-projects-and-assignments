@@ -1,0 +1,5 @@
+#!/usr/bin/expect -f
+spawn ssh jone@sfsuswe.com './deploy'
+expect "assword: "
+send "george1\r";
+interact

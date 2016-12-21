@@ -1,0 +1,11 @@
+Use Cases:
+
+
+-	User/Customer: Quiet Diners: After both getting home from work, Brett and his wife Bjork, love to eat out at local restaurants in their neighborhood in San Francisco. They are also people who prefer their favorite restaurants on quieter, less busy nights. More often than not, by the time they choose a restaurant to dine at, there are either no available tables or the restaurant is simply too busy for their liking. Instead of calling several different restaurants to inquire about reservations, Brett decides to enter his location on <site name> , which displays to him all nearby restaurants, the table availability for each, and the ability to reserve a table right away. 
+-	Hosts: On a very busy Friday night at Mario’s Dining, Jill, the host, can used the simple interface of BitLine to check the reservations of incoming customers. One couple that has a reservation at 6:30, arrives at the restaurant at 7:00. And Jill is able to see their reservation displayed on the interface already. Another couple, shows up an hour early and she is able to quickly search for their reservation by name or reservation time.
+-	Owners: Mario, a new business owner of fine Italian dining wants to promote his business by offering discounts for first time customers. Mario decides to subscribe to Biteline, which enables him to fill his empty tables by displaying them on the application and offer discounts for first-time customers, without having to via BiteBucks.
+
+Skill Levels:
+-	User
+-	Owner
+-	Host

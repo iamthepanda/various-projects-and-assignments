@@ -1,0 +1,237 @@
+package PJ4;
+import java.util.List;
+
+/**
+ * Action handler handles the actions taken on by players (ex. check, raise,
+ * fold)
+ * 
+ */
+public class ActionHandler {
+
+	private Hand hand;
+	private Table table;
+	private List<Player> players;
+	private int pot;
+	private Integer[] amountInvested;
+	private boolean isGameOver, isFolded;
+
+	public ActionHandler(Table newTable) {
+		table = newTable;
+		players = table.getPlayers();
+		hand = new Hand(players);
+		pot = table.getSb() + table.getBb();
+		amountInvested = new Integer[2];
+		amountInvested[0] = table.getSb();
+		amountInvested[1] = table.getBb();
+		isGameOver = false;
+		isFolded = false;
+	}
+
+	public void handleAction(String act) {
+		String[] action = act.split(" ");
+
+		if (action[0].equals("Fold")) {
+			handleFold();
+		} else if (action[0].equals("Call")) {
+			handleCall(Integer.parseInt(action[1]));
+		} else if (action[0].equals("Bet")) {
+			handleBet(Integer.parseInt(action[1]));
+		} else if (action[0].equals("Raise")) {
+			handleRaise(Integer.parseInt(action[1]));
+		} else if (action[0].equals("Check")) {
+			handleCheck();
+		}
+		hand.addAction(act);
+		handleShowDownAndNewRound();
+	}
+
+	public void handleCheck() {
+
+		amountInvested[0] = 0;
+		amountInvested[1] = 0;
+	}
+
+	public void handleFold() {
+
+		// The other player gets the pot
+		players.get(nextTurn()).add(pot);
+		isFolded = true;
+	}
+
+	public void handleCall(int amount) {
+		Player plyrWhoCalled = players.get(hand.getTurn());
+		pot += amount;
+		plyrWhoCalled.take(amount);
+		if (hand.getStreet() == 0 && hand.getAbsTurn() == 0) {
+			amountInvested[0] = table.getBb();
+		} else {
+			amountInvested[0] = 0;
+			amountInvested[1] = 0;
+		}
+	}
+
+	public void handleBet(int amount) {
+		Player plyrWhoBet = players.get(hand.getTurn());
+		pot += amount;
+		plyrWhoBet.take(amount);
+		amountInvested[hand.getTurn()] = amount;
+	}
+
+	public void handleRaise(int amount) {
+		Player plyrWhoRaised = players.get(hand.getTurn());
+		pot += amount - amountInvested[hand.getTurn()];
+		plyrWhoRaised.take(amount - amountInvested[hand.getTurn()]);
+		amountInvested[hand.getTurn()] = amount;
+	}
+
+	public boolean isOver() {
+		return isGameOver;
+	}
+
+	public boolean isAllIn() {
+		return players.get(0).hasNoChips() || players.get(1).hasNoChips();
+	}
+
+	private void handleShowDownAndNewRound() {
+		String lastAct = hand.getLastAct();
+		if (hand.getStreet() == 4) {
+			handleShowDown();
+			if (isAllIn()) {
+				isGameOver = true;
+			} else {
+				table.setUpNewRound(false);
+			}
+		} else if (isFolded) {
+			table.setUpNewRound(true);
+			// Someone went all in and other player called
+		} else if (lastAct == "" && isAllIn()) {
+			handleShowDown();
+			if (isAllIn()) {
+				isGameOver = true;
+			} else {
+				table.setUpNewRound(false);
+			}
+		}
+	}
+
+	private void handleShowDown() {
+		Card[] board = table.getBoard();
+		int betterHand = HandRank.compareHands(board,
+				players.get(hand.getTurn()).getCards(), players.get(nextTurn())
+						.getCards());
+		if (betterHand == 1) {
+			players.get(nextTurn()).add(pot);
+		} else if (betterHand == -1) {
+			players.get(hand.getTurn()).add(pot);
+		} else { // Split pot
+			players.get(nextTurn()).add(pot / 2);
+			players.get(hand.getTurn()).add(pot / 2);
+		}
+		if (players.get(0).getStack() == 0 || players.get(1).getStack() == 0) {
+			isGameOver = true;
+			pot = 0;
+		}
+	}
+
+	public String toCheckCall() {
+		String last = getSlicedString(hand.getLastAct());
+		String[] lstAry = last.split(" ");
+		if (hand.getStreet() == 0 && hand.getAbsTurn() == 0) {
+			return "Call " + table.getSb();
+		} else {
+			if (last.startsWith("Call") || last.startsWith("Check")
+					|| last.equals("")) {
+				return "Check";
+			} else if (last.startsWith("Bet")) {
+				return "Call " + Integer.parseInt(lstAry[1]);
+			} else {
+				return "Call "
+						+ (Integer.parseInt(lstAry[1]) - amountInvested[hand
+								.getTurn()]);
+			}
+		}
+	}
+
+	public String toBetRaise() {
+		String last = getSlicedString(hand.getLastAct());
+
+		if (hand.getStreet() == 0
+				&& (hand.getAbsTurn() == 0 || (last.split(" ")[0]
+						.equals("Call") && hand.getAbsTurn() == 1))) {
+			return "Raise " + (table.getBb() * 2);
+		} else {
+			if (amountInvested[nextTurn()] == 0) {
+				return "Bet " + (table.getBb());
+			} else { // Previously raised pot
+				int diff = Integer.parseInt(last.split(" ")[1])
+						- amountInvested[hand.getTurn()];
+				int amount = Integer.parseInt(last.split(" ")[1]); // raise amnt
+
+				if (amount == getPlayerInitialStack(hand.getTurn())
+						|| amount == getPlayerInitialStack(nextTurn())) {
+					return null;
+				} else if ((amount + diff > (getPlayerInitialStack(hand
+						.getTurn())) || amount + diff > (getPlayerInitialStack(nextTurn())))) {
+					return "Raise "
+							+ Math.min(getPlayerInitialStack(hand.getTurn()),
+									getPlayerInitialStack(nextTurn()));
+				} else {
+					return "Raise " + (amount + diff);
+				}
+			}
+		}
+	}
+
+	public int maxRaiseAmount() {
+		if (toBetRaise() == null) {
+			return 0;
+		}
+		return Math.min(getPlayerInitialStack(0), getPlayerInitialStack(1));
+	}
+
+	public int getPlayerInitialStack(int i) {
+		return table.getPlayer(i).getStack()
+				+ table.handler().playerAmountInvested(i);
+	}
+
+	public int playerAmountInvested(int i) {
+		return amountInvested[i];
+	}
+
+	private String getSlicedString(String s) {
+		if (s.length() == 0) {
+			return "";
+		}
+		return s.substring(s.indexOf(" ") + 1);
+	}
+
+	public int nextTurn() {
+		return (hand.getTurn() + 1) % 2;
+	}
+
+	public int pot() {
+		return pot;
+	}
+
+	public int playerInvestment() {
+
+		return amountInvested[table.getPlayerPos()];
+	}
+
+	public int computerInvestment() {
+		return amountInvested[table.getComputerPos()];
+	}
+
+	public int getTurn() {
+		return hand.getTurn();
+	}
+
+	public int getAbsTurn() {
+		return hand.getAbsTurn();
+	}
+
+	public int getStreet() {
+		return hand.getStreet();
+	}
+
+}

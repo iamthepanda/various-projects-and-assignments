@@ -1,0 +1,86 @@
+package PJ4;
+
+import java.util.Collections;
+import java.util.LinkedList;
+
+/**
+ * class PlayingCardException: It is used for errors related to Card and Deck
+ * objects Do not modify this class!
+ */
+class PlayingCardException extends Exception {
+
+	/**
+	 * 
+	 */
+	private static final long serialVersionUID = 1L;
+
+	/* Constructor to create a PlayingCardException object */
+	PlayingCardException() {
+		super();
+	}
+
+	PlayingCardException(String reason) {
+		super(reason);
+	}
+}
+
+/**
+ * Represents a card in a standard 52 card deck
+ * 
+ */
+class Card {
+
+	private char rank;
+
+	private char suit;
+
+	public Card(char r, char s) {
+		rank = r;
+		suit = s;
+	}
+
+	public char getRank() {
+		return rank;
+	}
+
+	public char getSuit() {
+		return suit;
+	}
+
+	public String toString() {
+		return Character.toString(rank) + Character.toString(suit);
+	}
+
+}
+
+class Deck {
+
+	private LinkedList<Card> deck;
+
+	public Deck() {
+		deck = getNewDeck();
+	}
+
+	private LinkedList<Card> getNewDeck() {
+		LinkedList<Card> newDeck = new LinkedList<Card>();
+		for (char rank : "23456789TJQKA".toCharArray()) {
+			for (char suit : "scdh".toCharArray()) {
+				newDeck.add(new Card(rank, suit));
+			}
+		}
+		return newDeck;
+	}
+
+	public void shuffle() {
+		Collections.shuffle(deck);
+	}
+
+	public Card popCard() {
+		return deck.removeFirst();
+	}
+
+	public boolean isEmpty() {
+		return deck.isEmpty();
+	}
+
+}

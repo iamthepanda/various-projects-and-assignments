@@ -1,0 +1,25 @@
+Initial list of functional specs – 
+
+6.	Functional sepcs
+•	Login / registration
+-	User shall be able to use the website without having to login
+-	User shall be able to create an account.
+-	Accounts shall consist of email & password.
+-	User shall be able to login to the website.
+-	A logged in user shall have a personalized home page.
+-	User shall be able to edit account
+-	User shall be able to delete account
+-	User shall be cofimed upon creation of account through email
+-	User shall be able to decline account creation within confirmation email
+•	Search
+-	User shall be able to search for nearby restaurants by entering a location
+-	Host shall be able to search for reservations by time.
+-	Host shall be able to search for reservations by name.
+-	Site shall have a default location.
+-	Site shall only display results within San Francisco
+•	Home Page
+-	Site shall display neighborhoods or areas
+•	Restaurant page
+-	User shall be able to reserve a table at a restaurants.
+-	Site shall displayed info about the restaurant
+-	Site shall displayed related restaurant.

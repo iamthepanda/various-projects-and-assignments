@@ -1,0 +1,641 @@
+package PJ4;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+
+/**
+ * Action handler handles the actions taken on by players (ex. check, raise,
+ * fold)
+ * 
+ */
+class ActionHandler {
+
+	private Hand hand;
+	private Table table;
+	private List<Player> players;
+	private int pot;
+	private Integer[] amountInvested;
+	private boolean isGameOver, isFolded;
+
+	public ActionHandler(Table newTable) {
+		table = newTable;
+		players = table.getPlayers();
+		hand = new Hand(players);
+		pot = table.getSb() + table.getBb();
+		amountInvested = new Integer[2];
+		amountInvested[0] = table.getSb();
+		amountInvested[1] = table.getBb();
+		isGameOver = false;
+		isFolded = false;
+	}
+
+	public void handleAction(String act) {
+		String[] action = act.split(" ");
+
+		if (action[0].equals("Fold")) {
+			handleFold();
+		} else if (action[0].equals("Call")) {
+			handleCall(Integer.parseInt(action[1]));
+		} else if (action[0].equals("Bet")) {
+			handleBet(Integer.parseInt(action[1]));
+		} else if (action[0].equals("Raise")) {
+			handleRaise(Integer.parseInt(action[1]));
+		} else if (action[0].equals("Check")) {
+			handleCheck();
+		}
+		hand.addAction(act);
+		handleShowDownAndNewRound();
+	}
+
+	public void handleCheck() {
+
+		amountInvested[0] = 0;
+		amountInvested[1] = 0;
+	}
+
+	public void handleFold() {
+
+		// The other player gets the pot
+		players.get(nextTurn()).add(pot);
+		isFolded = true;
+	}
+
+	public void handleCall(int amount) {
+		Player plyrWhoCalled = players.get(hand.getTurn());
+		pot += amount;
+		plyrWhoCalled.take(amount);
+		if (hand.getStreet() == 0 && hand.getAbsTurn() == 0) {
+			amountInvested[0] = table.getBb();
+		} else {
+			amountInvested[0] = 0;
+			amountInvested[1] = 0;
+		}
+	}
+
+	public void handleBet(int amount) {
+		Player plyrWhoBet = players.get(hand.getTurn());
+		pot += amount;
+		plyrWhoBet.take(amount);
+		amountInvested[hand.getTurn()] = amount;
+	}
+
+	public void handleRaise(int amount) {
+		Player plyrWhoRaised = players.get(hand.getTurn());
+		pot += amount - amountInvested[hand.getTurn()];
+		plyrWhoRaised.take(amount - amountInvested[hand.getTurn()]);
+		amountInvested[hand.getTurn()] = amount;
+	}
+
+	public boolean isOver() {
+		return isGameOver;
+	}
+
+	public boolean isAllIn() {
+		return players.get(0).hasNoChips() || players.get(1).hasNoChips();
+	}
+
+	private void handleShowDownAndNewRound() {
+		String lastAct = hand.getLastAct();
+		if (hand.getStreet() == 4) {
+			handleShowDown();
+			if (isAllIn()) {
+				isGameOver = true;
+			} else {
+				table.setUpNewRound(false);
+			}
+		} else if (isFolded) {
+			table.setUpNewRound(true);
+			// Someone went all in and other player called
+		} else if (lastAct == "" && isAllIn()) {
+			handleShowDown();
+			if (isAllIn()) {
+				isGameOver = true;
+			} else {
+				table.setUpNewRound(false);
+			}
+		}
+	}
+
+	private void handleShowDown() {
+		Card[] board = table.getBoard();
+		int betterHand = HandRank.compareHands(board,
+				players.get(hand.getTurn()).getCards(), players.get(nextTurn())
+						.getCards());
+		if (betterHand == 1) {
+			players.get(nextTurn()).add(pot);
+		} else if (betterHand == -1) {
+			players.get(hand.getTurn()).add(pot);
+		} else { // Split pot
+			players.get(nextTurn()).add(pot / 2);
+			players.get(hand.getTurn()).add(pot / 2);
+		}
+		if (players.get(0).getStack() == 0 || players.get(1).getStack() == 0) {
+			isGameOver = true;
+			pot = 0;
+		}
+	}
+
+	public String toCheckCall() {
+		String last = getSlicedString(hand.getLastAct());
+		String[] lstAry = last.split(" ");
+		if (hand.getStreet() == 0 && hand.getAbsTurn() == 0) {
+			return "Call " + table.getSb();
+		} else {
+			if (last.startsWith("Call") || last.startsWith("Check")
+					|| last.equals("")) {
+				return "Check";
+			} else if (last.startsWith("Bet")) {
+				return "Call " + Integer.parseInt(lstAry[1]);
+			} else {
+				return "Call "
+						+ (Integer.parseInt(lstAry[1]) - amountInvested[hand
+								.getTurn()]);
+			}
+		}
+	}
+
+	public String toBetRaise() {
+		String last = getSlicedString(hand.getLastAct());
+
+		if (hand.getStreet() == 0
+				&& (hand.getAbsTurn() == 0 || (last.split(" ")[0]
+						.equals("Call") && hand.getAbsTurn() == 1))) {
+			return "Raise " + (table.getBb() * 2);
+		} else {
+			if (amountInvested[nextTurn()] == 0) {
+				return "Bet " + (table.getBb());
+			} else { // Previously raised pot
+				int diff = Integer.parseInt(last.split(" ")[1])
+						- amountInvested[hand.getTurn()];
+				int amount = Integer.parseInt(last.split(" ")[1]); // raise amnt
+
+				if (amount == getPlayerInitialStack(hand.getTurn())
+						|| amount == getPlayerInitialStack(nextTurn())) {
+					return null;
+				} else if ((amount + diff > (getPlayerInitialStack(hand
+						.getTurn())) || amount + diff > (getPlayerInitialStack(nextTurn())))) {
+					return "Raise "
+							+ Math.min(getPlayerInitialStack(hand.getTurn()),
+									getPlayerInitialStack(nextTurn()));
+				} else {
+					return "Raise " + (amount + diff);
+				}
+			}
+		}
+	}
+
+	public int maxRaiseAmount() {
+		if (toBetRaise() == null) {
+			return 0;
+		}
+		return Math.min(getPlayerInitialStack(0), getPlayerInitialStack(1));
+	}
+
+	public int getPlayerInitialStack(int i) {
+		return table.getPlayer(i).getStack()
+				+ table.handler().playerAmountInvested(i);
+	}
+
+	public int playerAmountInvested(int i) {
+		return amountInvested[i];
+	}
+
+	private String getSlicedString(String s) {
+		if (s.length() == 0) {
+			return "";
+		}
+		return s.substring(s.indexOf(" ") + 1);
+	}
+
+	public int nextTurn() {
+		return (hand.getTurn() + 1) % 2;
+	}
+
+	public int pot() {
+		return pot;
+	}
+
+	public int playerInvestment() {
+
+		return amountInvested[table.getPlayerPos()];
+	}
+
+	public int computerInvestment() {
+		return amountInvested[table.getComputerPos()];
+	}
+
+	public int getTurn() {
+		return hand.getTurn();
+	}
+
+	public int getAbsTurn() {
+		return hand.getAbsTurn();
+	}
+
+	public int getStreet() {
+		return hand.getStreet();
+	}
+
+}
+
+class Hand {
+	private ArrayList<ArrayList<String>> hand;
+	private List<Player> players;
+
+	public Hand(List<Player> players2) {
+		hand = new ArrayList<ArrayList<String>>();
+		hand.add(new ArrayList<String>());
+		players = players2;
+	}
+
+	public int getStreet() {
+		return hand.size() - 1;
+	}
+
+	public int getTurn() {
+		return getAbsTurn() % 2;
+	}
+
+	public int getAbsTurn() {
+		if (getStreet() == 0) {
+			return hand.get(0).size();
+		} else {
+			return (hand.get(getStreet()).size() + 1);
+		}
+	}
+
+	public void addAction(String act) {
+		String action = act.split(" ")[0];
+		if (action.equals("Check")) {
+			if (getStreet() > 0 && getTurn() == 1) { // bb check
+				_addAction(act);
+			} else { // button check
+				_addAction(act);
+				hand.add(new ArrayList<String>());
+			}
+		} else if (action.equals("Call")) {
+			if (getStreet() == 0 && getAbsTurn() == 0) {
+				_addAction(act);
+			} else {
+				_addAction(act);
+				hand.add(new ArrayList<String>());
+			}
+		} else { // Bet Raise Fold
+			_addAction(act);
+		}
+	}
+
+	private void _addAction(String action) {
+		String username = players.get(getTurn()).getUsername();
+		hand.get(getStreet()).add(username + " " + action);
+	}
+
+	public Integer[] _getLastAct() {
+		int size = hand.get(getStreet()).size();
+		Integer[] streetTurn = new Integer[2];
+		streetTurn[0] = getStreet();
+		streetTurn[1] = size - 1;
+		return streetTurn;
+	}
+
+	public String getLastAct() {
+		Integer[] streetTurn = _getLastAct();
+		if (streetTurn[1] < 0) { // There was no last act in this street;
+			return "";
+		}
+		return hand.get(streetTurn[0]).get(streetTurn[1]);
+	}
+
+	public String getSecLastAct() {
+		Integer[] streetTurn = _getLastAct();
+		if ((streetTurn[1] - 1) < 0) { // No second last act in this street
+			return "";
+		} else {
+			return hand.get(streetTurn[0]).get(streetTurn[1] - 1);
+		}
+	}
+
+	public String toString() {
+		int i = 0;
+		String result = "";
+
+		for (ArrayList<String> street : hand) {
+
+			if (i == 0) {
+				result += "Preflop:\n";
+			} else if (i == 1) {
+				result += "Flop:\n";
+			} else if (i == 2) {
+				result += "Turn:\n";
+			} else if (i == 3) {
+				result += "River:\n";
+			}
+
+			for (String action : street) {
+				result += action + "\n";
+			}
+			result += "\n\n";
+			i++;
+		}
+		return result;
+	}
+}
+
+public class HandRank {
+
+	public static int compareHands(Card[] board, Card[] hc1, Card[] hc2) {
+
+		int[] hand1 = determineHand(board, hc1);
+		int[] hand2 = determineHand(board, hc2);
+
+		return compare(hand1, hand2);
+
+	}
+
+	public static int[] getHandRank(Card[] cards) {
+		int[] ranks = new int[6];
+
+		if (isStraightFlush(cards) != null) {
+			ranks = isStraightFlush(cards);
+		} else if (isFourKind(cards) != null) {
+			ranks = isFourKind(cards);
+		} else if (isFullHouse(cards) != null) {
+			ranks = isFullHouse(cards);
+		} else if (isFlush(cards) != null) {
+			ranks = isFlush(cards);
+		} else if (isStraight(cards) != null) {
+			ranks = isStraight(cards);
+		} else if (isTrips(cards) != null) {
+			ranks = isTrips(cards);
+		} else if (isTwoPair(cards) != null) {
+			ranks = isTwoPair(cards);
+		} else if (isOnePair(cards) != null) {
+			ranks = isOnePair(cards);
+		} else {
+			ranks = isHighCard(cards);
+		}
+		return ranks;
+	}
+
+	public static int[] determineHand(Card[] board, Card[] holeCards) {
+		// Given 7 cards there are 21 (board and hc) combinations to put it
+		// as 5 cards
+		String[] combinations = getCombinations(board.length);
+
+		Card[] combo = new Card[5];
+		int[] maxRank = { 0, 0, 0, 0, 0, 0 };
+		int j = 0;
+
+		for (String comb : combinations) {
+			for (char c : comb.toCharArray()) {
+				if (c == '6') {
+					combo[j] = (holeCards[0]);
+				} else if (c == '7') {
+					combo[j] = holeCards[1];
+				} else {
+					combo[j] = board[Integer.parseInt(Character.toString(c)) - 1];
+				}
+				j++;
+			}
+			j = 0;
+			if ((compare(maxRank, getHandRank(combo)) == 1)) {
+				maxRank = getHandRank(combo);
+			}
+		}
+		return maxRank;
+	}
+
+	public static String[] getCombinations(int boardSize) {
+		if (boardSize == 5) {
+			String[] combinations = { "12345", "12346", "12347", "12356",
+					"12357", "12367", "12456", "12457", "12467", "12567",
+					"13456", "13457", "13467", "13567", "14567", "23456",
+					"23457", "23467", "23567", "24567", "34567" };
+			return combinations;
+		} else if (boardSize == 4) {
+			String[] combinations = { "12345", "12346", "12356", "12456",
+					"13456", "23456" };
+			return combinations;
+		} else if (boardSize == 3) {
+			String[] combinations = { "12345" };
+			return combinations;
+		}
+		return null;
+	}
+
+	public static int[] isStraightFlush(Card[] cards) {
+		int[] result = new int[2];
+		result[0] = 8;
+
+		if (isStraight(cards) != null && isFlush(cards) != null) {
+			result[1] = max(cards);
+			return result;
+		} else {
+			return null;
+		}
+	}
+
+	public static int[] isFourKind(Card[] cards) {
+		int[] result = new int[3];
+		result[0] = 7;
+
+		if (isKind(4, cards) > 0) {
+			result[1] = isKind(4, cards);
+			result[2] = isKind(1, cards);
+			return result;
+		} else {
+			return null;
+		}
+
+	}
+
+	public static int[] isFullHouse(Card[] cards) {
+		int[] result = new int[3];
+		result[0] = 6;
+
+		if (isKind(3, cards) > 0 && isKind(2, cards) > 0) {
+			result[1] = isKind(3, cards);
+			result[2] = isKind(2, cards);
+			return result;
+		} else {
+			return null;
+		}
+	}
+
+	public static int[] isFlush(Card[] cards) {
+		int[] result = new int[6];
+		result[0] = 5;
+		Arrays.sort(cards, new CardComparator());
+		if (cards[0].getSuit() == cards[1].getSuit()
+				&& cards[1].getSuit() == cards[2].getSuit()
+				&& cards[2].getSuit() == cards[3].getSuit()
+				&& cards[3].getSuit() == cards[4].getSuit()) {
+			System.arraycopy(isHighCard(cards), 1, result, 0, 5);
+			return result;
+		} else {
+			return null;
+		}
+	}
+
+	public static int[] isStraight(Card[] cards) {
+		Arrays.sort(cards, new CardComparator());
+		int[] result = new int[2];
+		result[0] = 4;
+		if (isHighCard(cards) != null) {
+			if (rank(cards[4]) - rank(cards[0]) == 4) {
+				result[1] = max(cards);
+				return result;
+			} else if (cards[4].getRank() == 'A' && cards[3].getRank() == '5') { // Wheel
+				result[1] = 5;
+				return result;
+			} else {
+				return null;
+			}
+		} else {
+			return null;
+		}
+	}
+
+	public static int[] isTrips(Card[] cards) {
+		if (isKind(3, cards) < 0 || isKind(1, cards) < 0) {
+			return null;
+		}
+
+		int[] result = new int[4];
+		result[0] = 3;
+		Card[] reducedCards = getReducedCards(cards, 3);
+		Arrays.sort(reducedCards, new CardComparator());
+		result[1] = isKind(3, cards);
+		result[2] = rank(reducedCards[1]);
+		result[3] = rank(reducedCards[0]);
+		return result;
+	}
+
+	public static int[] isTwoPair(Card[] cards) {
+		int[] result = new int[4];
+		result[0] = 2;
+
+		if (isKind(2, cards) > 0 && secPair(cards) > 0) {
+			result[1] = Math.max(isKind(2, cards), secPair(cards));
+			result[2] = Math.min(isKind(2, cards), secPair(cards));
+			result[3] = isKind(1, cards);
+			return result;
+		} else {
+			return null;
+		}
+	}
+
+	public static int[] isOnePair(Card[] cards) {
+		int[] result = new int[5];
+		result[0] = 1;
+
+		if (isKind(2, cards) > 0) {
+			Card[] reducedCards = getReducedCards(cards, 2);
+			Arrays.sort(reducedCards, new CardComparator());
+			result[1] = isKind(2, cards);
+			result[2] = rank(reducedCards[2]);
+			result[3] = rank(reducedCards[1]);
+			result[4] = rank(reducedCards[0]);
+			return result;
+		} else {
+			return null;
+		}
+	}
+
+	public static int[] isHighCard(Card[] cards) {
+		for (Card c : cards) {
+			if (cardCount(c, cards) != 1) {
+				return null;
+			}
+		}
+
+		Arrays.sort(cards, new CardComparator());
+		int[] result = new int[6];
+		result[0] = 0;
+
+		for (int i = 0; i < cards.length; i++) {
+			result[i + 1] = rank(cards[cards.length - 1 - i]);
+		}
+		return result;
+	}
+
+	private static int secPair(Card[] cards) {
+		Arrays.sort(cards, new CardComparator());
+		if (isKind(2, cards) == -1) {
+			return -1;
+		}
+		Card[] reducedCards = getReducedCards(cards, 2);
+		return isKind(2, reducedCards);
+	}
+
+	private static Card[] getReducedCards(Card[] cards, int kind) {
+		int firstRank = isKind(kind, cards);
+		Card[] reducedCards = new Card[5 - kind];
+
+		int j = 0;
+		for (int i = 0; i < cards.length; i++) {
+			if (rank(cards[i]) != firstRank) {
+				reducedCards[j] = cards[i];
+				j++;
+			}
+		}
+		return reducedCards;
+	}
+
+	public static int isKind(int freq, Card[] cards) {
+		Arrays.sort(cards, new CardComparator());
+		for (Card c : cards) {
+			if (cardCount(c, cards) == freq) {
+				return rank(c);
+			}
+		}
+		return -1;
+	}
+
+	public static int cardCount(Card card, Card[] cards) {
+		int counter = 0;
+
+		for (Card c : cards) {
+			if (card.getRank() == c.getRank()) {
+				counter += 1;
+			}
+		}
+		return counter;
+	}
+
+	public static int max(Card[] cards) {
+		Arrays.sort(cards, new CardComparator());
+		return rank(cards[cards.length - 1]);
+	}
+
+	public static int rank(Card card) {
+		return "..23456789TJQKA".indexOf(card.getRank());
+	}
+
+	private static int compare(int[] one, int[] two) {
+		for (int i = 0; i < Math.min(one.length, two.length); i++) {
+			if (one[i] < two[i]) {
+				return 1;
+			} else if (one[i] > two[i]) {
+				return -1;
+			}
+		}
+		return 0;
+	}
+
+	public static String s(Card[] cards) {
+		String s = "";
+		for (Card c : cards) {
+			s += c + " ";
+		}
+		return s;
+	}
+
+	public static void main(String[] agrs) {
+		int[] a = { 1, 2, 3, 4, 5 };
+		int[] b = new int[7];
+		System.arraycopy(a, 0, b, 0, 4);
+		System.out.println(b[1]);
+	}
+}

@@ -1,0 +1,53 @@
+
+/*
+<link href="css/custom.css" rel="stylesheet">
+*/
+
+h1, h2, h3 {
+    color: white;
+    text-shadow: -1px 0 darkslateblue, 0 1px darkslateblue, 1px 0 darkslateblue, 0 -1px darkslateblue;
+}
+small {
+    /*color: gray;*/
+    text-shadow: 0px 0 darkslateblue, 0 0px darkslateblue, 0px 0 darkslateblue, 0 0px darkslateblue;
+}
+
+body {
+    padding-top: 70px;
+    /* Required padding for .navbar-fixed-top. Remove if using .navbar-static-top. Change if height of navigation changes. */
+    background: url('../pics/78c8dff1.jpeg');
+    background-size: cover;
+}
+div > div > div {
+    color: darkslateblue;
+}
+
+footer {
+    /*    position: absolute;
+        width: 100%;
+        left: 0px;
+        height: 30px;
+        bottom: 0px;*/
+    color: white;
+}
+
+
+* {
+    margin: 0;
+}
+html, body {
+    height: 100%;
+}
+.wrapper {
+    min-height: 100%;
+    height: auto !important;
+    height: 100%;
+    margin: 0 auto -11em;
+}
+.footer, .push {
+    height: 11em;
+}
+
+.well {
+   background-color: rgba(245, 245, 245, 0.8);
+}

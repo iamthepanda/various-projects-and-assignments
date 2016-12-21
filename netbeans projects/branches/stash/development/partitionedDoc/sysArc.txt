@@ -1,0 +1,8 @@
+High-level system architecture
+
+•	Supported browser: Chrome, Firefox, IE
+•	System
+-	LAMP
+-	jQuery
+-	Bootstrap
+-	HTML/CSS

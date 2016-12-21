@@ -1,0 +1,5 @@
+#!/usr/bin/expect -f
+spawn ssh f15g05@sfsuswe.com './deploy'
+expect "assword: "
+send "648team5\r";
+interact

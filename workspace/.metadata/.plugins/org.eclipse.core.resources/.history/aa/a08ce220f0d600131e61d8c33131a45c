@@ -1,0 +1,29 @@
+package PJ4;
+/**
+ * Represents a card in a standard 52 card deck
+ * 
+ */
+public class Card {
+
+	private char rank;
+	
+	private char suit;
+	
+	public Card(char r, char s) {
+		rank = r;
+		suit = s;
+	}
+	
+	public char getRank() {
+		return rank;
+	}
+	
+	public char getSuit() {
+		return suit;
+	}
+	
+	public String toString() {
+		return Character.toString(rank) + Character.toString(suit);
+	}
+
+}

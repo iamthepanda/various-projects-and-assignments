@@ -1,0 +1,730 @@
+package PJ4;
+
+import java.awt.Container;
+import java.awt.Font;
+import java.awt.GridLayout;
+import java.awt.Image;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+
+import javax.swing.Icon;
+import javax.swing.ImageIcon;
+import javax.swing.JButton;
+import javax.swing.JFrame;
+import javax.swing.JLabel;
+import javax.swing.JMenu;
+import javax.swing.JMenuBar;
+import javax.swing.JMenuItem;
+import javax.swing.JOptionPane;
+import javax.swing.JPanel;
+import javax.swing.JSlider;
+import javax.swing.SwingConstants;
+import javax.swing.Timer;
+import javax.swing.event.ChangeEvent;
+import javax.swing.event.ChangeListener;
+
+public class PokerGUI extends JFrame {
+
+	JLabel topCard1, topCard2, topDealer, bottomCard1, bottomCard2,
+			bottomDealer;
+	String tc1, tc2, f1, f2, f3, tn, riv;
+	JLabel bottomPlayerStkLabel, topPlayerStkLabel, potLabel;
+	JLabel CompActions, handNumber;
+	JButton foldButton, checkCallButton, betRaiseButton;
+	JLabel flopCard1Label, flopCard2Label, flopCard3Label, turnCardLabel,
+			riverCardLabel;
+	JSlider slider;
+	JPanel top, bottom, middle;
+	Timer timer;
+	JMenuBar menubar;
+	JMenu file, help;
+	JMenuItem reset, exit, about;
+
+	Table table;
+	int bb, sb, startStk;
+
+	public PokerGUI(Table currentTable) {
+		table = currentTable;
+		startStk = table.getStartingStk();
+		bb = table.getBb();
+		sb = bb / 2;
+		setUpPane();
+		setUpMenu();
+		addLlisteners();
+		frstCompMove();
+		setTitle("Heads Up Poker");
+	}
+
+	private void setUpMenu() {
+		menubar = new JMenuBar();
+		setJMenuBar(menubar);
+
+		file = new JMenu("File");
+		menubar.add(file);
+
+		help = new JMenu("Help");
+		menubar.add(help);
+
+		reset = new JMenuItem("Restart");
+		file.add(reset);
+
+		exit = new JMenuItem("Quit");
+		file.add(exit);
+
+		about = new JMenuItem("About");
+		help.add(about);
+
+		exit.addActionListener(new Close());
+		reset.addActionListener(new Restart());
+		about.addActionListener(new About());
+	}
+
+	private void frstCompMove() {
+		if (table.getComputerPos() == 0) { // Computer starts as button
+			table.handler().handleAction(
+					ComputerPlayer.makeMove(table.handler()));
+			resetLabels();
+		}
+	}
+
+	private ImageIcon getResizedIcon(String imgName) {
+		imgName = String.format("img/%s.png", imgName);
+
+		Icon orig = new ImageIcon(getClass().getResource(imgName));
+		Image img = ((ImageIcon) orig).getImage();
+		Image newimg = img.getScaledInstance(80, 100,
+				java.awt.Image.SCALE_SMOOTH);
+
+		return new ImageIcon(newimg);
+	}
+
+	private void setUpPane() {
+		Container pane = this.getContentPane();
+		pane.setLayout(new GridLayout(3, 1, 3, 3));
+		addTopJPanel(pane);
+		addMiddleJPanel(pane);
+		addBottomJPanel(pane);
+		setUpFonts();
+	}
+
+	private void addTopJPanel(Container pane) {
+		// Top set up
+		top = new JPanel();
+		pane.add(top);
+		top.setLayout(new GridLayout(2, 4, 15, 15));
+		initialTopDealerIconSetUp();
+		initialTopCardsSetUp();
+		initialTopPlyrStkLabelSetUp();
+		addTopItems();
+	}
+
+	private void initialTopDealerIconSetUp() {
+		if (table.getComputerPos() == 1) {
+			topDealer = new JLabel(getResizedIcon("bb"), SwingConstants.LEFT);
+		} else {
+			topDealer = new JLabel(getResizedIcon("dealer"),
+					SwingConstants.LEFT);
+		}
+	}
+
+	private void initialTopCardsSetUp() {
+		topCard1 = new JLabel(getResizedIcon("back"), SwingConstants.RIGHT);
+		topCard2 = new JLabel(getResizedIcon("back"), SwingConstants.LEFT);
+	}
+
+	private void initialTopPlyrStkLabelSetUp() {
+		int compPos = table.getComputerPos();
+		topPlayerStkLabel = new JLabel(table.getPlayer(compPos).getUsername()
+				+ ": $" + table.getPlayer(compPos).getStack(),
+				SwingConstants.CENTER);
+	}
+
+	private void addTopItems() {
+		top.add(topPlayerStkLabel);
+		top.add(topCard1);
+		top.add(topCard2);
+		top.add(emptyLabel());
+		top.add(emptyLabel());
+		top.add(emptyLabel());
+		top.add(topDealer);
+		top.add(emptyLabel());
+	}
+
+	private void addMiddleItems() {
+		middle.add(emptyLabel());
+		middle.add(flopCard1Label);
+		middle.add(flopCard2Label);
+		middle.add(flopCard3Label);
+		middle.add(turnCardLabel);
+		middle.add(riverCardLabel);
+		middle.add(emptyLabel());
+		middle.add(emptyLabel());
+		middle.add(emptyLabel());
+		middle.add(emptyLabel());
+		middle.add(potLabel);
+		middle.add(emptyLabel());
+		middle.add(emptyLabel());
+		middle.add(emptyLabel());
+	}
+
+	private void addBottomItems() {
+		bottom.add(bottomDealer);
+		bottom.add(bottomCard1);
+		bottom.add(bottomCard2);
+		bottom.add(slider);
+		bottom.add(bottomPlayerStkLabel);
+		bottom.add(foldButton);
+		bottom.add(checkCallButton);
+		bottom.add(betRaiseButton);
+	}
+
+	private void addMiddleJPanel(Container pane) {
+		middle = new JPanel();
+		pane.add(middle);
+		// Middle set up
+		middle.setLayout(new GridLayout(2, 7));
+		initialBoardAndPotLabelSetUp();
+		addMiddleItems();
+	}
+
+	private void addBottomJPanel(Container pane) {
+		bottom = new JPanel();
+		bottom.setLayout(new GridLayout(2, 4, 15, 15));
+		pane.add(bottom);
+		initialHoleCardsSetUp();
+		initialBottomPlyrStkLabelSetUp();
+		initialButtonsSetUp();
+		initialSaveBoardStrings();
+		initialSliderAndBottomDealerIconSetUp();
+		addBottomItems();
+	}
+
+	private void initialBoardAndPotLabelSetUp() {
+		flopCard1Label = new JLabel("");
+		flopCard2Label = new JLabel("");
+		flopCard3Label = new JLabel("");
+		turnCardLabel = new JLabel("");
+		riverCardLabel = new JLabel("");
+		potLabel = new JLabel("Pot: $" + (bb + sb), SwingConstants.CENTER);
+	}
+
+	private void initialHoleCardsSetUp() {
+		Card[] holeCards = table.getPlayer(table.getPlayerPos()).getCards();
+		Icon bCard1 = getResizedIcon(holeCards[0].toString());
+		Icon bCard2 = getResizedIcon(holeCards[1].toString());
+
+		bottomCard1 = new JLabel(bCard1, SwingConstants.RIGHT);
+		bottomCard2 = new JLabel(bCard2, SwingConstants.LEFT);
+	}
+
+	private void initialBottomPlyrStkLabelSetUp() {
+		int plyrPos = table.getPlayerPos();
+		bottomPlayerStkLabel = new JLabel(table.getPlayer(plyrPos)
+				.getUsername() + ": $" + table.getPlayer(plyrPos).getStack(),
+				SwingConstants.CENTER);
+	}
+
+	private void initialButtonsSetUp() {
+		foldButton = new JButton("Fold");
+		checkCallButton = new JButton("Call " + (bb - sb));
+		betRaiseButton = new JButton("Raise " + (bb * 2));
+	}
+
+	private void initialSaveBoardStrings() {
+		Card[] compHoleCards = table.getPlayer(table.getComputerPos())
+				.getCards();
+		tc1 = compHoleCards[0].toString();
+		tc2 = compHoleCards[1].toString();
+
+		Card[] tboard = table.getBoard();
+		f1 = tboard[0].toString();
+		f2 = tboard[1].toString();
+		f3 = tboard[2].toString();
+		tn = tboard[3].toString();
+		riv = tboard[4].toString();
+
+		Card[] plyrHoleCards = table.getPlayer(table.getComputerPos())
+				.getCards();
+		tc1 = plyrHoleCards[0].toString();
+		tc2 = plyrHoleCards[1].toString();
+	}
+
+	private void initialSliderAndBottomDealerIconSetUp() {
+		int plyrPos = table.getPlayerPos();
+		Icon dealerIcon;
+
+		slider = new JSlider(JSlider.HORIZONTAL);
+		slider.setMinimum(bb * 2);
+		slider.setMajorTickSpacing(20);
+		slider.setSnapToTicks(true);
+
+		if (plyrPos == 0) {
+			dealerIcon = getResizedIcon("dealer");
+			slider.setMaximum(table.getPlayer(0).getStack() + sb);
+		} else {
+			dealerIcon = getResizedIcon("bb");
+			slider.setMaximum(table.getPlayer(1).getStack() + bb);
+		}
+		bottomDealer = new JLabel(dealerIcon, SwingConstants.RIGHT);
+	}
+
+	private void setUpFonts() {
+		Font font = new Font("Serif", Font.PLAIN, 17);
+		bottomPlayerStkLabel.setFont(font);
+		topPlayerStkLabel.setFont(font);
+		potLabel.setFont(font);
+	}
+
+	private void addLlisteners() {
+		SliderEvent sliderListener = new SliderEvent();
+		slider.addChangeListener(sliderListener);
+
+		Event Event = new Event();
+		foldButton.addActionListener(Event);
+		checkCallButton.addActionListener(Event);
+		betRaiseButton.addActionListener(Event);
+	}
+
+	private class SliderEvent implements ChangeListener {
+		public void stateChanged(ChangeEvent e) {
+			try {
+				int v = slider.getValue();
+				String s = betRaiseButton.getText().split(" ")[0];
+				betRaiseButton.setText(s + " " + v);
+			} catch (Exception a) {
+			}
+		}
+	}
+
+	private class Event implements ActionListener {
+
+		public void actionPerformed(ActionEvent e) {
+			table.handler().handleAction(e.getActionCommand());
+			compMove();
+			displayAppropriateSt();
+			resetLabels();
+
+			if (!table.isFolded()
+					&& (table.handler().getStreet() == 0
+							&& (table.handler().getAbsTurn() == 0 || (table
+									.handler().getAbsTurn() == 1 && table
+									.getComputerPos() == 0)) || table.handler()
+							.isOver())) {
+				new ShowdownTimer(5500);
+			}
+			if (table.isFolded()) {
+				initialSaveBoardStrings();
+				table.setIsFolded(false);
+				resetDealerBBLabels();
+				resetHoleCards();
+				clearBoard();
+			}
+		}
+	}
+
+	private void compMove() {
+		if (isCompTurn() && !table.handler().isOver()) {
+			ComputerPlayer.makeMove(table.handler());
+			_compMove();
+			int compPos = table.getComputerPos();
+			if (isCompTurn() && table.getPlayer(compPos).getStack() != 0) {
+				_compMove();
+			}
+		}
+	}
+
+	private void _compMove() {
+		table.handler().handleAction(ComputerPlayer.makeMove(table.handler()));
+	}
+
+	private boolean isCompTurn() {
+		return table.handler().getTurn() == table.getComputerPos();
+	}
+
+	private void displayAppropriateSt() {
+		if (table.handler().getStreet() == 1) {
+			displayFlop();
+		} else if (table.handler().getStreet() == 2) {
+			displayTurn();
+		} else if (table.handler().getStreet() == 3) {
+			displayRiver();
+		}
+	}
+
+	private JLabel emptyLabel() {
+		return new JLabel("");
+	}
+
+	private void resetLabels() {
+		resetBottomPlayerStakLabel();
+		resetTopPlayerStakLabel();
+		resetPotLabel();
+		resetCheckCallButton();
+		resetBetRaiseButton();
+		resetSlider();
+	}
+
+	private void resetOppCards() {
+		topCard1.setIcon(getResizedIcon("back"));
+		topCard2.setIcon(getResizedIcon("back"));
+	}
+
+	private void displayOppCards() {
+		topCard1.setIcon(getResizedIcon(tc1));
+		topCard2.setIcon(getResizedIcon(tc2));
+
+		Card[] holeCards = table.getPlayer(table.getComputerPos()).getCards();
+		tc1 = holeCards[0].toString();
+		tc2 = holeCards[1].toString();
+	}
+
+	private void displayFlop() {
+		flopCard1Label.setIcon(getResizedIcon(table.getBoard()[0].toString()));
+		flopCard2Label.setIcon(getResizedIcon(table.getBoard()[1].toString()));
+		flopCard3Label.setIcon(getResizedIcon(table.getBoard()[2].toString()));
+	}
+
+	private void displayTurn() {
+		turnCardLabel.setIcon(getResizedIcon(table.getBoard()[3].toString()));
+	}
+
+	private void displayRiver() {
+		riverCardLabel.setIcon(getResizedIcon(table.getBoard()[4].toString()));
+	}
+
+	private void resetHoleCards() {
+		Card[] holeCards = table.getPlayer(table.getPlayerPos()).getCards();
+		bottomCard1.setIcon(getResizedIcon(holeCards[0].toString()));
+		bottomCard2.setIcon(getResizedIcon(holeCards[1].toString()));
+
+	}
+
+	private void resetCheckCallButton() {
+		checkCallButton.setText(table.handler().toCheckCall());
+	}
+
+	private void resetBetRaiseButton() {
+		betRaiseButton.setText(table.handler().toBetRaise());
+
+	}
+
+	private void resetPotLabel() {
+		potLabel.setText("Pot: $" + table.handler().pot());
+	}
+
+	private void resetBottomPlayerStakLabel() {
+		bottomPlayerStkLabel.setText("Player: $"
+				+ table.getPlayer(table.getPlayerPos()).getStack());
+	}
+
+	private void resetTopPlayerStakLabel() {
+		topPlayerStkLabel.setText("Comp: $"
+				+ table.getPlayer(table.getComputerPos()).getStack());
+	}
+
+	private void resetDealerBBLabels() {
+		Icon bbIcon = getResizedIcon("bb");
+		Icon dealerIcon = getResizedIcon("dealer");
+
+		if (table.getPlayerPos() == 0) {
+			bottomDealer.setIcon(dealerIcon);
+			topDealer.setIcon(bbIcon);
+		} else {
+			bottomDealer.setIcon(bbIcon);
+			topDealer.setIcon(dealerIcon);
+		}
+	}
+
+	private void resetSlider() {
+		resetBetRaiseButton();
+		slider.setEnabled(true);
+		betRaiseButton.setEnabled(true);
+		int pos = table.getPlayerPos();
+		int compPos = table.getComputerPos();
+		if (table.handler().toBetRaise() == null) {
+			slider.setMaximum(0);
+			slider.setMinimum(0);
+			slider.setEnabled(false);
+			betRaiseButton.setEnabled(false);
+		} else {
+			Integer min = Integer.parseInt(table.handler().toBetRaise()
+					.split(" ")[1]);
+			slider.setMinimum(min);
+			if (betRaiseButton.getText().startsWith("Raise")) { // Raise
+				slider.setMaximum(table.handler().maxRaiseAmount());
+			} else { // Bet
+				int plyrMax = table.getPlayer(pos).getStack();
+				int compMax = table.getPlayer(compPos).getStack();
+				slider.setMaximum(Math.min(plyrMax, compMax));
+			}
+
+		}
+		slider.setValue(0);
+	}
+
+	private void clearBoard() {
+		flopCard1Label.setIcon(null);
+		flopCard2Label.setIcon(null);
+		flopCard3Label.setIcon(null);
+		turnCardLabel.setIcon(null);
+		riverCardLabel.setIcon(null);
+	}
+
+	private class ShowdownTimer {
+		private final Timer timer;
+
+		public ShowdownTimer(int delay) {
+			timer = new Timer(delay, new StopListener());
+			timer.start();
+			displayOppCards();
+			foldButton.setEnabled(false);
+			checkCallButton.setEnabled(false);
+			betRaiseButton.setEnabled(false);
+			slider.setEnabled(false);
+
+			flopCard1Label.setIcon(getResizedIcon(f1));
+			flopCard2Label.setIcon(getResizedIcon(f2));
+			flopCard3Label.setIcon(getResizedIcon(f3));
+			turnCardLabel.setIcon(getResizedIcon(tn));
+			riverCardLabel.setIcon(getResizedIcon(riv));
+
+			Card[] tboard = table.getBoard();
+			f1 = tboard[0].toString();
+			f2 = tboard[1].toString();
+			f3 = tboard[2].toString();
+			tn = tboard[3].toString();
+			riv = tboard[4].toString();
+		}
+
+		private class StopListener implements ActionListener {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				foldButton.setEnabled(true);
+				checkCallButton.setEnabled(true);
+				betRaiseButton.setEnabled(true);
+				slider.setEnabled(true);
+				resetOppCards();
+				resetLabels();
+				resetHoleCards();
+				clearBoard();
+				resetDealerBBLabels();
+
+				timer.stop();
+				if (table.handler().isOver()) {
+					foldButton.setEnabled(false);
+					checkCallButton.setEnabled(false);
+					betRaiseButton.setEnabled(false);
+					slider.setEnabled(false);
+				}
+			}
+		}
+	}
+
+	private class Close implements ActionListener {
+		public void actionPerformed(ActionEvent e) {
+			System.exit(0);
+		}
+	}
+
+	private class Restart implements ActionListener {
+		public void actionPerformed(ActionEvent e) {
+
+			table = new Table(startStk, bb);
+			bb = table.getBb();
+			sb = bb / 2;
+			resetHoleCards();
+			if (table.getPlayerPos() == 0) {
+				topDealer.setIcon(getResizedIcon("bb"));
+				bottomDealer.setIcon(getResizedIcon("dealer"));
+			} else {
+				topDealer.setIcon(getResizedIcon("dealer"));
+				bottomDealer.setIcon(getResizedIcon("bb"));
+			}
+			frstCompMove();
+			resetLabels();
+			initialSaveBoardStrings();
+			clearBoard();
+			enableAllButtonsAndSlider();
+		}
+	}
+
+	private class About implements ActionListener {
+		public void actionPerformed(ActionEvent e) {
+			String msg = "<html>Welcome, the game is Texas Hold'em Heads Up Poker. <br> Written by: Jaehyun Wie";
+			JOptionPane.showMessageDialog(null, msg);
+		}
+	}
+
+	private void enableAllButtonsAndSlider() {
+		foldButton.setEnabled(true);
+		checkCallButton.setEnabled(true);
+		betRaiseButton.setEnabled(true);
+		slider.setEnabled(true);
+
+	}
+
+	public static void main(String[] agrs) {
+		Table table = new Table(1500, 20);
+		PokerGUI gui = new PokerGUI(table);
+		gui.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+		gui.setSize(650, 800);
+		gui.setVisible(true);
+	}
+}
+
+public class Table {
+
+	// Index represents player's position
+	private List<Player> players;
+	private Deck deck;
+	private Card[] board;
+	private int bb, startStk;
+	private ActionHandler handler;
+	private boolean isFolded;
+
+	public Table(int eachPlayerStack, int bigBlind) {
+
+		startStk = eachPlayerStack;
+		players = new ArrayList<Player>();
+		randomizePlayerPos(players, eachPlayerStack);
+		deck = new Deck();
+		deck.shuffle();
+		bb = bigBlind;
+		board = new Card[5];
+		handler = new ActionHandler(this);
+		isFolded = false;
+		dealCards();
+		takeBlinds();
+
+	}
+
+	public boolean isFolded() {
+		return isFolded;
+	}
+
+	public void setIsFolded(boolean b) {
+		isFolded = b;
+	}
+
+	private void randomizePlayerPos(List<Player> players,
+			int eachPlayerStack) {
+
+		if (new Random().nextInt(2) == 0) {
+			players.add(new ComputerPlayer(eachPlayerStack, "Comp"));
+			players.add(new Player(eachPlayerStack, "Player"));
+		} else {
+			players.add(new Player(eachPlayerStack, "Player"));
+			players.add(new ComputerPlayer(eachPlayerStack, "Comp"));
+		}
+
+	}
+
+	public void setUpNewRound(boolean isFolded) {
+		if (!this.handler().isOver()) {
+			movePlayerPositions();
+			deck = new Deck();
+			deck.shuffle();
+			dealCards();
+			takeBlinds();
+			handler = new ActionHandler(this);
+			this.isFolded = isFolded;
+		}
+	}
+
+	public List<Player> getPlayers() {
+		return players;
+	}
+
+	/**
+	 * Move players' positions by one
+	 */
+	public void movePlayerPositions() {
+
+		Player temp = players.get(0);
+		players.set(0, players.get(1));
+		players.set(1, temp);
+	}
+
+	public void takeBlinds() {
+
+		players.get(0).take(bb / 2);
+		players.get(1).take(bb);
+	}
+
+	public void dealCards() {
+
+		for (Player p : players) {
+			p.setCards(deck.popCard(), deck.popCard());
+		}
+
+		for (int i = 0; i < 5; i++) {
+			board[i] = deck.popCard();
+		}
+	}
+
+	public void shuffleDeck() {
+
+		deck.shuffle();
+	}
+
+	public Player getPlayer(int pos) {
+		return players.get(pos);
+	}
+
+	public int getBb() {
+		return bb;
+	}
+
+	public int getSb() {
+		return bb / 2;
+	}
+
+	public Card[] getBoard() {
+		return board;
+	}
+
+	public int getPlayerPos() {
+
+		if (players.get(0) instanceof ComputerPlayer) {
+			return 1;
+		} else {
+			return 0;
+		}
+
+	}
+
+	public int getComputerPos() {
+
+		if (players.get(0) instanceof ComputerPlayer) {
+			return 0;
+		} else {
+			return 1;
+		}
+	}
+
+	public Player getPlayer() {
+
+		return players.get(getPlayerPos());
+
+	}
+
+	public Player getComptuer() {
+		return players.get(getComputerPos());
+	}
+
+	public int getStartingStk() {
+		return startStk;
+	}
+
+	public ActionHandler handler() {
+		return handler;
+	}
+
+	public void handleAction(String action) {
+		handler.handleAction(action);
+	}
+
+	public static void main(String[] agrs) {
+
+	}
+}

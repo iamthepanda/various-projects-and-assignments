@@ -1,0 +1,26 @@
+
+/*
+<link href="css/custom.css" rel="stylesheet">
+*/
+
+h1, 
+h3 {
+    color: white;
+    text-shadow: -2px 0 darkolivegreen, 0 2px darkolivegreen, 2px 0 darkolivegreen, 0 -2px darkolivegreen;
+}
+small {
+    /*color: gray;*/
+    text-shadow: 0px 0 darkolivegreen, 0 0px darkolivegreen, 0px 0 darkolivegreen, 0 0px darkolivegreen;
+}
+footer {
+    color: white;
+}
+
+body {
+    padding-top: 70px;
+    /* Required padding for .navbar-fixed-top. Remove if using .navbar-static-top. Change if height of navigation changes. */
+
+    background: url("http://cdn.wall-pix.net/albums/art-space/00030109.jpg");
+    background-size: cover;
+}
+
